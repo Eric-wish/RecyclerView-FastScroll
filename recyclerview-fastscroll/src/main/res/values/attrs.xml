@@ -36,5 +36,6 @@
         <attr name="fastScrollAutoHideDelay" format="reference|integer" />
         <attr name="fastScrollEnableThumbInactiveColor" format="reference|boolean" />
         <attr name="fastScrollThumbEnabled" format="reference|boolean" />
+        <attr name="fastScrollRoundScrollBar" format="reference|boolean" />
     </declare-styleable>
 </resources>

@@ -456,7 +456,7 @@ public class FastScrollRecyclerView extends RecyclerView implements RecyclerView
         }
 
         int totalHeight = 0;
-        MeasurableAdapter measurer = (MeasurableAdapter) getAdapter();
+        MeasurableAdapter<ViewHolder> measurer = (MeasurableAdapter<ViewHolder>) getAdapter();
 
         // TODO Take grid layouts into account
 
@@ -487,8 +487,16 @@ public class FastScrollRecyclerView extends RecyclerView implements RecyclerView
         mScrollbar.show();
     }
 
-    public void setThumbColor(@ColorInt int color) {
-        mScrollbar.setThumbColor(color);
+    public void setThumbActiveColor(@ColorInt int color) {
+        mScrollbar.setThumbActiveColor(color);
+    }
+
+    public void setThumbInactiveColor(@ColorInt int color) {
+        mScrollbar.setThumbInactiveColor(color);
+    }
+
+    public void setEnableThumbInactiveColor(boolean enabled) {
+        mScrollbar.setEnableThumbInactiveColor(enabled);
     }
 
     public void setTrackColor(@ColorInt int color) {
@@ -528,18 +536,6 @@ public class FastScrollRecyclerView extends RecyclerView implements RecyclerView
         setOnFastScrollStateChangeListener(stateChangeListener);
     }
 
-    public void setThumbInactiveColor(@ColorInt int color) {
-        mScrollbar.setThumbInactiveColor(color);
-    }
-
-    public void allowThumbInactiveColor(boolean allowInactiveColor) {
-        mScrollbar.enableThumbInactiveColor(allowInactiveColor);
-    }
-
-    @Deprecated
-    public void setThumbInactiveColor(boolean allowInactiveColor) {
-        allowThumbInactiveColor(allowInactiveColor);
-    }
 
     public void setFastScrollEnabled(boolean fastScrollEnabled) {
         mFastScrollEnabled = fastScrollEnabled;
@@ -557,6 +553,10 @@ public class FastScrollRecyclerView extends RecyclerView implements RecyclerView
      */
     public void setPopupPosition(@FastScroller.PopupPosition int popupPosition) {
         mScrollbar.setPopupPosition(popupPosition);
+    }
+
+    public void setRoundScrollBar(boolean isRound) {
+        mScrollbar.setRoundScrollBar(isRound);
     }
 
     private class ScrollOffsetInvalidator extends AdapterDataObserver {

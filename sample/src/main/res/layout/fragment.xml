@@ -35,6 +35,7 @@
         app:fastScrollPopupTextColor="@android:color/primary_text_dark"
         app:fastScrollPopupTextSize="32dp"
         app:fastScrollPopupTextVerticalAlignmentMode="font_metrics"
+        app:fastScrollRoundScrollBar="true"
         app:fastScrollThumbColor="@color/colorAccent"
         app:fastScrollThumbEnabled="true"
         tools:listitem="@layout/list_item_header" />

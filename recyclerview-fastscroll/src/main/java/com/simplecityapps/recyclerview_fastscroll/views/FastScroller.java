@@ -32,12 +32,6 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 
-import com.simplecityapps.recyclerview_fastscroll.R;
-import com.simplecityapps.recyclerview_fastscroll.interfaces.OnFastScrollStateChangeListener;
-import com.simplecityapps.recyclerview_fastscroll.utils.Utils;
-
-import java.lang.annotation.Retention;
-
 import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
 import androidx.annotation.Keep;
@@ -45,6 +39,12 @@ import androidx.annotation.NonNull;
 import androidx.interpolator.view.animation.FastOutLinearInInterpolator;
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.simplecityapps.recyclerview_fastscroll.R;
+import com.simplecityapps.recyclerview_fastscroll.interfaces.OnFastScrollStateChangeListener;
+import com.simplecityapps.recyclerview_fastscroll.utils.Utils;
+
+import java.lang.annotation.Retention;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
@@ -61,6 +61,8 @@ public class FastScroller {
 
     private Paint mTrack;
     private int mTrackWidth;
+
+    private boolean mRoundScrollBar;
 
     private Rect mTmpRect = new Rect();
     private Rect mInvalidateRect = new Rect();
@@ -84,9 +86,10 @@ public class FastScroller {
     private boolean mAutoHideEnabled = true;
     private final Runnable mHideRunnable;
 
+    private boolean isThumbActive;
     private int mThumbActiveColor;
     private int mThumbInactiveColor = 0x79000000;
-    private boolean mThumbInactiveState;
+    private boolean mThumbInactiveEnabled;
 
     private int mTouchSlop;
 
@@ -98,6 +101,7 @@ public class FastScroller {
         int TEXT_BOUNDS = 0;
         int FONT_METRICS = 1;
     }
+
     @IntDef({PopupPosition.ADJACENT, PopupPosition.CENTER})
     public @interface PopupPosition {
         int ADJACENT = 0;
@@ -127,9 +131,10 @@ public class FastScroller {
         try {
             mAutoHideEnabled = typedArray.getBoolean(R.styleable.FastScrollRecyclerView_fastScrollAutoHide, true);
             mAutoHideDelay = typedArray.getInteger(R.styleable.FastScrollRecyclerView_fastScrollAutoHideDelay, DEFAULT_AUTO_HIDE_DELAY);
-            mThumbInactiveState = typedArray.getBoolean(R.styleable.FastScrollRecyclerView_fastScrollEnableThumbInactiveColor, true);
+            mThumbInactiveEnabled = typedArray.getBoolean(R.styleable.FastScrollRecyclerView_fastScrollEnableThumbInactiveColor, true);
             mThumbActiveColor = typedArray.getColor(R.styleable.FastScrollRecyclerView_fastScrollThumbColor, 0x79000000);
             mThumbInactiveColor = typedArray.getColor(R.styleable.FastScrollRecyclerView_fastScrollThumbInactiveColor, 0x79000000);
+            mRoundScrollBar = typedArray.getBoolean(R.styleable.FastScrollRecyclerView_fastScrollRoundScrollBar, false);
 
             int trackColor = typedArray.getColor(R.styleable.FastScrollRecyclerView_fastScrollTrackColor, 0x28000000);
             int popupBgColor = typedArray.getColor(R.styleable.FastScrollRecyclerView_fastScrollPopupBgColor, 0xff000000);
@@ -140,13 +145,13 @@ public class FastScroller {
             @PopupPosition int popupPosition = typedArray.getInteger(R.styleable.FastScrollRecyclerView_fastScrollPopupPosition, PopupPosition.ADJACENT);
 
             mTrack.setColor(trackColor);
-            mThumb.setColor(mThumbInactiveState ? mThumbInactiveColor : mThumbActiveColor);
             mPopup.setBgColor(popupBgColor);
             mPopup.setTextColor(popupTextColor);
             mPopup.setTextSize(popupTextSize);
             mPopup.setBackgroundSize(popupBackgroundSize);
             mPopup.setPopupTextVerticalAlignmentMode(popupTextVerticalAlignmentMode);
             mPopup.setPopupPosition(popupPosition);
+            updateThumbPaintColor();
         } finally {
             typedArray.recycle();
         }
@@ -204,8 +209,11 @@ public class FastScroller {
         int y = (int) ev.getY();
         switch (action) {
             case MotionEvent.ACTION_DOWN:
+                isThumbActive = false;
                 if (isNearPoint(downX, downY)) {
                     mTouchOffset = downY - mThumbPosition.y;
+                    isThumbActive = true;
+                    updateThumbPaintColor();
                 }
                 break;
             case MotionEvent.ACTION_MOVE:
@@ -219,9 +227,8 @@ public class FastScroller {
                     if (stateChangeListener != null) {
                         stateChangeListener.onFastScrollStart();
                     }
-                    if (mThumbInactiveState) {
-                        mThumb.setColor(mThumbActiveColor);
-                    }
+                    isThumbActive = true;
+                    updateThumbPaintColor();
                 }
                 if (mIsDragging) {
                     if (mLastY == 0 || Math.abs(mLastY - y) >= mTouchSlop) {
@@ -255,9 +262,8 @@ public class FastScroller {
                         stateChangeListener.onFastScrollStop();
                     }
                 }
-                if (mThumbInactiveState) {
-                    mThumb.setColor(mThumbInactiveColor);
-                }
+                isThumbActive = false;
+                updateThumbPaintColor();
                 break;
         }
     }
@@ -271,23 +277,26 @@ public class FastScroller {
         }
 
         //Background
+        float trackRadius = mRoundScrollBar ? mTrackWidth : 0;
         rect.set(mThumbPosition.x + mOffset.x + (mThumbWidth - mTrackWidth),
                 mOffset.y + mRecyclerView.getPaddingTop(),
                 mThumbPosition.x + mOffset.x + mTrackWidth + (mThumbWidth - mTrackWidth),
                 mRecyclerView.getHeight() + mOffset.y - mRecyclerView.getPaddingBottom());
         canvas.drawRoundRect(rect,
-                mTrackWidth,
-                mTrackWidth,
+                trackRadius,
+                trackRadius,
                 mTrack);
 
-        //Handle
-        rect.set(mThumbPosition.x + mOffset.x + (mThumbWidth - mTrackWidth) / 2,
+
+        //thumb
+        float thumbRadius = mRoundScrollBar ? mThumbWidth : 0;
+        rect.set(mThumbPosition.x + mOffset.x + (mThumbWidth - mTrackWidth) / 2f,
                 mThumbPosition.y + mOffset.y,
-                mThumbPosition.x + mOffset.x + mThumbWidth + (mThumbWidth - mTrackWidth) / 2,
+                mThumbPosition.x + mOffset.x + mThumbWidth + (mThumbWidth - mTrackWidth) / 2f,
                 mThumbPosition.y + mOffset.y + mThumbHeight);
         canvas.drawRoundRect(rect,
-                mThumbWidth,
-                mThumbWidth,
+                thumbRadius,
+                thumbRadius,
                 mThumb);
 
         //Popup
@@ -385,10 +394,26 @@ public class FastScroller {
         }
     }
 
-    public void setThumbColor(@ColorInt int color) {
+    public void setThumbActiveColor(@ColorInt int color) {
         mThumbActiveColor = color;
-        mThumb.setColor(color);
+        updateThumbPaintColor();
         mRecyclerView.invalidate(mInvalidateRect);
+    }
+
+    public void setThumbInactiveColor(@ColorInt int color) {
+        mThumbInactiveColor = color;
+        updateThumbPaintColor();
+        mRecyclerView.invalidate(mInvalidateRect);
+    }
+
+    public void setEnableThumbInactiveColor(boolean enabled) {
+        mThumbInactiveEnabled = enabled;
+        updateThumbPaintColor();
+        mRecyclerView.invalidate(mInvalidateRect);
+    }
+
+    private void updateThumbPaintColor() {
+        mThumb.setColor(!isThumbActive && mThumbInactiveEnabled ? mThumbInactiveColor : mThumbActiveColor);
     }
 
     public void setTrackColor(@ColorInt int color) {
@@ -432,18 +457,9 @@ public class FastScroller {
         mPopup.setPopupPosition(popupPosition);
     }
 
-    public void setThumbInactiveColor(@ColorInt int color) {
-        mThumbInactiveColor = color;
-        enableThumbInactiveColor(true);
+    public void setRoundScrollBar(boolean isRound){
+        mRoundScrollBar = isRound;
+        mRecyclerView.invalidate(mInvalidateRect);
     }
 
-    public void enableThumbInactiveColor(boolean enableInactiveColor) {
-        mThumbInactiveState = enableInactiveColor;
-        mThumb.setColor(mThumbInactiveState ? mThumbInactiveColor : mThumbActiveColor);
-    }
-
-    @Deprecated
-    public void setThumbInactiveColor(boolean thumbInactiveColor) {
-        enableThumbInactiveColor(thumbInactiveColor);
-    }
 }
